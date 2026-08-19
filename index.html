@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Flowrite - Free Essay Generator</title>
+  <style>
+    body { font-family: Arial; background: #0f172a; color: white; padding: 40px; text-align: center; }
+    textarea { width: 80%; height: 120px; padding: 10px; border-radius: 8px; border: none; margin: 10px; }
+    button { background: #6366f1; color: white; padding: 12px 30px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; }
+    button:hover { background: #4f46e5; }
+    #output { margin-top: 20px; background: #1e293b; padding: 20px; border-radius: 8px; text-align: left; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>Flowrite ✨</h1>
+  <p>Turn your bullets into a college essay. Powered by FREE Gemini AI</p>
+  
+  <textarea id="bullets" placeholder="Enter bullet points: won debate, started club, love physics"></textarea><br>
+  <button onclick="generate()">Generate Essay</button>
+  
+  <div id="output"></div>
+
+  <script>
+    async function generate() {
+      const bullets = document.getElementById('bullets').value;
+      document.getElementById('output').innerText = 'Generating...';
+      
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({bullets, type: 'personal statement', tone: 'authentic', length: '400 words'})
+      });
+      const data = await res.json();
+      document.getElementById('output').innerText = data.text || data.error;
+    }
+  </script>
+</body>
+</html>
