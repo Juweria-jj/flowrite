@@ -4,8 +4,7 @@ export default async function handler(req, res) {
     const topic = (text || '').trim();
     if (!topic) return res.json({ result: "Please enter a topic first." });
 
-    // EMERGENCY - hardcoded so live site works RIGHT NOW
-    const GROQ_KEY = "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";
+    const GROQ_KEY = (process.env.GROQ_API_KEY || "").trim();
 
     const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -14,19 +13,16 @@ export default async function handler(req, res) {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model: "openai/gpt-oss-20b",
         messages: [{ role: "user", content: `Write a ${tone||'informal'} essay on '${topic}' in ${limit||250} words.` }],
         max_tokens: 800
       })
     });
 
     const d = await r.json();
-    if (!r.ok) {
-      return res.json({ result: "GROQ ERROR: " + JSON.stringify(d) });
-    }
-    const essay = d.choices[0].message.content;
-    return res.json({ result: essay, text: essay });
+    if (!r.ok) return res.json({ result: "GROQ ERROR: " + JSON.stringify(d) });
 
+    return res.json({ result: d.choices[0].message.content, text: d.choices[0].message.content });
   } catch (e) {
     return res.json({ result: "FAIL: " + e.message });
   }
