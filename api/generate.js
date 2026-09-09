@@ -1,9 +1,7 @@
 export default async function handler(req, res) {
   const { text, tone, limit } = req.body || {};
   const topic = (text || '').trim() || "pollution";
-
-  // PASTE YOUR GROQ KEY HERE - DIRECTLY
-  const GROQ_KEY = "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";
+  const GROQ_KEY = "gsk_YOUR_KEY_HERE_PASTE_HERE"; // your same key
 
   try {
     const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -19,20 +17,9 @@ export default async function handler(req, res) {
         temperature: 0.7
       })
     });
-
     const d = await r.json();
-    console.log("GROQ response:", JSON.stringify(d));
-
-    if (d.error) {
-      return res.json({ result: `Groq Error: ${d.error.message}`, text: `Groq Error: ${d.error.message}` });
-    }
-
-    const essay = d.choices?.[0]?.message?.content;
-    if (essay) {
-      return res.json({ result: essay, text: essay });
-    } else {
-      return res.json({ result: "No essay from Groq, check key", text: "No essay from Groq" });
-    }
+    // SHOW FULL GROQ RESPONSE ON SCREEN
+    return res.json({ result: JSON.stringify(d, null, 2), text: JSON.stringify(d, null, 2) });
   } catch (e) {
     return res.json({ result: `CODE FAIL: ${e.message}`, text: `CODE FAIL: ${e.message}` });
   }
