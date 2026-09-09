@@ -1,7 +1,7 @@
 export default async function handler(req, res) {
   const { text, tone, limit } = req.body || {};
   const topic = (text || '').trim() || "pollution";
-  const GROQ_KEY = "gsk_YOUR_KEY_HERE_PASTE_HERE"; // your same key
+  const GROQ_KEY = "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"; // your same key
 
   try {
     const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
