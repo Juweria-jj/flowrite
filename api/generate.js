@@ -3,7 +3,7 @@ export default async function handler(req, res) {
   const topic = (text || '').trim() || "pollution";
 
   // PASTE YOUR GROQ KEY HERE - DIRECTLY
-  const GROQ_KEY = "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";
+  const GROQ_KEY = "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";
 
   try {
     const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
