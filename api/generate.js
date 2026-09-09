@@ -1,30 +1,37 @@
 export const config = { maxDuration: 10 }
 
 export default async function handler(req, res) {
-  if (req.method!== 'POST') return res.status(405).json({ error: 'Method not allowed' })
-
-  const { text, tone, limit } = req.body
-  const topic = text.replace(/essay on/gi, '').trim() || text
-  const key = process.env.GEMINI_API_KEY
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  if (req.method!== 'POST') return res.status(200).json({ result: 'Use POST', text: 'Use POST' });
 
   try {
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${key}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: `Write a ${tone} essay on "${topic}" in about ${limit} words. Well structured paragraphs only.` }] }],
-        generationConfig: { maxOutputTokens: 350, temperature: 0.7 } // 350 = FAST, under 10 sec
-      })
-    })
+    const body = req.body || {};
+    const prompt = body.text || body.prompt || body.topic || 'test';
+    const tone = body.tone || 'Formal';
+    const limit = body.limit || '300';
+    const key = process.env.GEMINI_API_KEY;
 
-    const d = await r.json()
+    if (!key) return res.status(200).json({ result: 'API KEY MISSING in Vercel', text: 'API KEY MISSING in Vercel' });
+
+    const topic = prompt.replace(/essay on/gi,'').trim();
+
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${key}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: `Write a ${tone} essay on "${topic}" in about ${limit} words.` }] }],
+        generationConfig: { maxOutputTokens: 300, temperature: 0.7 }
+      })
+    });
+
+    const d = await r.json();
     if (d.error) {
-      return res.status(200).json({ result: `Error: ${d.error.message}` })
+      return res.status(200).json({ result: d.error.message, text: d.error.message });
     }
-    const essay = d.candidates?.[0]?.content?.parts?.[0]?.text || "No essay generated"
-    return res.status(200).json({ result: essay })
+    const essay = d.candidates?.[0]?.content?.parts?.[0]?.text || 'No text';
+    return res.status(200).json({ result: essay, text: essay });
 
   } catch (e) {
-    return res.status(200).json({ result: "Error: " + e.message })
+    return res.status(200).json({ result: 'Server error: ' + e.message, text: 'Server error: ' + e.message });
   }
 }
