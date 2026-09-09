@@ -8,22 +8,19 @@ export default async function handler(req, res) {
   const key = process.env.GEMINI_API_KEY
 
   try {
-    // FASTEST model for new users - gemini-3.5-flash-lite
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${key}`, {
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts: [{ text: `Write a ${tone} essay on "${topic}" in about ${limit} words. Well structured paragraphs only.` }] }],
-        generationConfig: { maxOutputTokens: 700, temperature: 0.7 }
+        generationConfig: { maxOutputTokens: 350, temperature: 0.7 } // 350 = FAST, under 10 sec
       })
     })
 
     const d = await r.json()
-
     if (d.error) {
-      return res.status(200).json({ result: `Error: ${d.error.message} - Try model gemini-3.6-flash` })
+      return res.status(200).json({ result: `Error: ${d.error.message}` })
     }
-
     const essay = d.candidates?.[0]?.content?.parts?.[0]?.text || "No essay generated"
     return res.status(200).json({ result: essay })
 
