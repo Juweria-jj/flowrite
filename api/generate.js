@@ -1,36 +1,39 @@
 export default async function handler(req, res) {
-  const key = process.env.GEMINI_API_KEY || "PASTE_YOUR_KEY_HERE_IF_ENV_FAILS";
   const { text, tone, limit } = req.body || {};
-  const topic = (text || '').replace(/essay on/gi, '').trim().slice(0,100);
+  const topic = (text || '').trim() || "pollution";
 
-  // Try fastest to slowest - if one is busy, next one works
-  const MODELS = [
-    "gemini-2.0-flash-lite",
-    "gemini-2.0-flash",
-    "gemini-1.5-flash",
-    "gemini-2.5-flash-lite"
-  ];
+  // PASTE YOUR GROQ KEY HERE - DIRECTLY
+  const GROQ_KEY = "gsk_gsk_DHvMl4FRqyqM0l4IQqetWGdyb3FYyizYm20wVMsFZTJcTarK8aD0";
 
-  for (const model of MODELS) {
-    try {
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: `Write a ${tone || 'Authentic'} essay on "${topic}" in ${limit || 300} words.` }] }],
-          generationConfig: { maxOutputTokens: 600, temperature: 0.7 }
-        })
-      });
-      const d = await r.json();
-      if (d.error) {
-        console.log(`${model} failed: ${d.error.message}`);
-        continue; // try next model
-      }
-      const essay = d.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (essay) return res.status(200).json({ result: essay, text: essay });
-    } catch (e) {
-      continue;
+  try {
+    const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${GROQ_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "llama-3.3-70b-versatile",
+        messages: [{ role: "user", content: `Write a ${tone || 'Authentic'} essay on "${topic}" in ${limit || 300} words.` }],
+        max_tokens: 700,
+        temperature: 0.7
+      })
+    });
+
+    const d = await r.json();
+    console.log("GROQ response:", JSON.stringify(d));
+
+    if (d.error) {
+      return res.json({ result: `Groq Error: ${d.error.message}`, text: `Groq Error: ${d.error.message}` });
     }
+
+    const essay = d.choices?.[0]?.message?.content;
+    if (essay) {
+      return res.json({ result: essay, text: essay });
+    } else {
+      return res.json({ result: "No essay from Groq, check key", text: "No essay from Groq" });
+    }
+  } catch (e) {
+    return res.json({ result: `CODE FAIL: ${e.message}`, text: `CODE FAIL: ${e.message}` });
   }
-  return res.status(200).json({ result: "All models busy, please retry in 5 sec", text: "All models busy, please retry in 5 sec" });
 }
