@@ -1,11 +1,15 @@
-export async function POST(req: Request) {
+export default async function handler(req, res) {
+  if (req.method!== 'POST') {
+    return res.status(405).json({ error: 'Only POST allowed' });
+  }
+
   try {
-    const body = await req.json();
-    const prompt = body.prompt || body.topic || "Write an essay";
+    const { prompt, topic, type } = req.body;
+    const finalPrompt = prompt || topic || 'Write an essay';
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return Response.json({ error: "GEMINI_API_KEY not set in Vercel" }, { status: 500 });
+      return res.status(500).json({ error: 'GEMINI_API_KEY not set in Vercel' });
     }
 
     const response = await fetch(
@@ -18,7 +22,7 @@ export async function POST(req: Request) {
           "x-goog-api-key": apiKey,
         },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
+          contents: [{ parts: [{ text: finalPrompt }] }],
         }),
       }
     );
@@ -26,13 +30,14 @@ export async function POST(req: Request) {
     const data = await response.json();
 
     if (!response.ok) {
-      return Response.json({ error: data.error?.message || "Gemini API error", full: data }, { status: 500 });
+      console.error("Gemini Error:", data);
+      return res.status(500).json({ error: data.error?.message || 'Gemini failed', details: data });
     }
 
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "No response";
-    return Response.json({ text: text });
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "No response from AI";
+    return res.status(200).json({ text: text, output: text });
 
-  } catch (e: any) {
-    return Response.json({ error: e.message }, { status: 500 });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
   }
 }
