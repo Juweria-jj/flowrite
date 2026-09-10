@@ -1,42 +1,29 @@
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  if (req.method!== 'POST') return res.status(200).json({ essay: 'Use POST' });
-
+  if (req.method!== 'POST') return res.status(405).json({ error: 'POST only' });
   try {
-    const body = typeof req.body === 'string'? JSON.parse(req.body) : req.body;
-    const prompt = body.prompt || 'purpose of life';
-    const words = parseInt(body.words) || 200;
+    const { prompt, words = 200, style = 'Authentic' } = req.body;
+    const apiKey = process.env.GOOGLE_API_KEY?.trim();
 
-    const apiKey = process.env.GOOGLE_API_KEY;
-    if (!apiKey) return res.status(500).json({ essay: 'ERROR: GOOGLE_API_KEY missing in Vercel' });
+    // YOUR exact model from your cURL
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent`;
 
-    // Use 2.0-flash - this is the only one that works with AQ keys
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-
-    const resp = await fetch(url, {
+    const r = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-goog-api-key': apiKey
+      },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: `Write ${words} word essay on: ${prompt}. Write only essay.` }] }],
-        generationConfig: { maxOutputTokens: 2000, temperature: 0.7 }
+        contents: [{ parts: [{ text: `You are a human student. Write ${words} words essay on "${prompt}" in ${style} tone. Start directly, no As an AI.` }] }],
+        generationConfig: { maxOutputTokens: 2500, temperature: 0.8 }
       })
     });
 
-    const data = await resp.json();
-
-    if (data.error) {
-      return res.status(200).json({ essay: `GOOGLE ERROR: ${JSON.stringify(data.error)}` });
-    }
-
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!text) {
-      return res.status(200).json({ essay: `NO TEXT. Full response: ${JSON.stringify(data).slice(0,1000)}` });
-    }
-
-    return res.status(200).json({ essay: text });
-
+    const data = await r.json();
+    if (data.error) return res.status(200).json({ essay: `ERROR: ${data.error.message}` });
+    const essay = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    return res.status(200).json({ essay: essay || 'Empty - try again' });
   } catch (e) {
-    return res.status(200).json({ essay: `CODE ERROR: ${e.message}` });
+    return res.status(200).json({ essay: e.message });
   }
 }
