@@ -1,22 +1,33 @@
+let lastCall = 0;
+
 export default async function handler(req, res) {
   try {
     const { text, tone, limit } = req.body || {};
     const topic = (text || "").trim();
     if (!topic) return res.json({ result: "Please enter a topic first." });
 
-    const GROQ_KEY = (process.env.GROQ_API_KEY || "").trim();
-    const wordLimit = parseInt(limit) || 250;
-    const neededTokens = Math.min(350, Math.max(120, Math.round(wordLimit * 1.4)));
+    // --- 3 FREE KEYS ROTATION ---
+    const KEYS = [
+      process.env.GROQ_API_KEY,
+      process.env.GROQ_API_KEY_2,
+      process.env.GROQ_API_KEY_3
+    ].filter(Boolean).map(k => k.trim());
 
-    // retry 3 times if rate limit hits
-    let lastError = null;
-    for (let attempt = 0; attempt < 3; attempt++) {
+    const GROQ_KEY = KEYS[Math.floor(Math.random() * KEYS.length)];
+
+    const wordLimit = Math.min(250, parseInt(limit) || 150);
+    const neededTokens = 200; // hard cap for free tier
+
+    // --- QUEUE: 1 person at a time, 1.5 sec gap ---
+    const now = Date.now();
+    const waitNeeded = Math.max(0, lastCall + 1500 - now);
+    if (waitNeeded > 0) await new Promise(r => setTimeout(r, waitNeeded));
+    lastCall = Date.now();
+
+    for (let attempt = 0; attempt < 4; attempt++) {
       const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
-        headers: {
-          "Authorization": "Bearer " + GROQ_KEY,
-          "Content-Type": "application/json"
-        },
+        headers: { "Authorization": "Bearer " + GROQ_KEY, "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "openai/gpt-oss-20b",
           messages: [{ role: "user", content: `Write a ${tone||'informal'} essay on '${topic}' in ${wordLimit} words.` }],
@@ -26,24 +37,16 @@ export default async function handler(req, res) {
       });
 
       const d = await r.json();
+      if (r.ok) return res.json({ result: d.choices[0].message.content, text: d.choices[0].message.content });
 
-      if (r.ok) {
-        return res.json({ result: d.choices[0].message.content, text: d.choices[0].message.content });
+      if (JSON.stringify(d).includes("rate_limit")) {
+        await new Promise(r => setTimeout(r, 3000));
+        continue;
       }
-
-      // if rate limited, wait and retry
-      if (d.error?.code === "rate_limit_exceeded" || JSON.stringify(d).includes("rate_limit")) {
-        lastError = d;
-        const waitSec = parseFloat(d.error?.message?.match(/try again in ([\d.]+)s/)?.[1] || "3.5");
-        await new Promise(r => setTimeout(r, (waitSec + 0.5) * 1000));
-        continue; // retry loop
-      } else {
-        return res.json({ result: "GROQ ERROR: " + JSON.stringify(d) });
-      }
+      return res.json({ result: "Error: " + JSON.stringify(d) });
     }
 
-    // if still fails after 3 retries
-    return res.json({ result: `Server is busy right now (many people using it). Please wait 5 seconds and click Generate again. ✨` });
+    return res.json({ result: "Server busy! Many students generating. Wait 5 sec and try again ✨" });
 
   } catch (e) {
     return res.json({ result: "FAIL: " + e.message });
