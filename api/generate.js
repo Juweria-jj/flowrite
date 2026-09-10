@@ -10,7 +10,7 @@ export default async function handler(req, res) {
     const prompt = `Write a ${tone||'informal'} essay on '${topic}' in exactly ${wordLimit} words. Be authentic, human-like, no AI phrases.`;
 
     const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GOOGLE_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${GOOGLE_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
